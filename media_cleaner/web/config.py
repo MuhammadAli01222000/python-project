@@ -2,6 +2,7 @@
 Configuration settings for Media Cleaner Web Application.
 """
 
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,6 +26,6 @@ ALL_ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
 # Upload limits
 MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024  # 500 MB
 
-# Server settings
+# Server settings (reads $PORT from Render, Heroku or Railway environment)
 HOST = "0.0.0.0"
-PORT = 8000
+PORT = int(os.environ.get("PORT", 8000))

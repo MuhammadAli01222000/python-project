@@ -6,6 +6,7 @@ Automatically detects occupied ports and chooses the next available port.
 """
 
 import sys
+import os
 import socket
 import webbrowser
 import threading
@@ -57,6 +58,12 @@ def main():
             target_port = int(arg.split("=")[1])
         elif arg.isdigit() and len(arg) >= 4:
             target_port = int(arg)
+
+    if not target_port and "PORT" in os.environ:
+        try:
+            target_port = int(os.environ["PORT"])
+        except ValueError:
+            target_port = None
 
     if not target_port:
         target_port = find_available_port(PORT)
