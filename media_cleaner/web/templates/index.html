@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaCleaner — Video va Rasmlardan Yozuv, Raqam va Logolarni Tozalash</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation / Header -->
+        <header class="header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/>
+                        <path d="m14 7 3 3"/>
+                        <path d="M5 6v4"/>
+                        <path d="M19 14v4"/>
+                        <path d="M10 2v2"/>
+                        <path d="M7 8H3"/>
+                        <path d="M21 16h-4"/>
+                        <path d="M11 3H9"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="logo-title">MediaCleaner</h1>
+                    <p class="logo-subtitle">Video va rasmlardan yozuv, subtitr, raqam va logolarni tozalash</p>
+                </div>
+            </div>
+            <div class="badge-status">
+                <span class="pulse-dot"></span>
+                <span>Yengil & Tezkor (OpenCV Inpainting)</span>
+            </div>
+        </header>
+
+        <!-- Global Error Banner -->
+        <div id="error-banner" class="alert-banner alert-error" style="display: none;">
+            <div class="alert-content">
+                <svg class="alert-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <div id="error-message" class="alert-text"></div>
+            </div>
+            <button type="button" class="btn-close" onclick="dismissError()">✕</button>
+        </div>
+
+        <!-- Main Workspace Grid -->
+        <main class="main-content">
+            <!-- Left Side: Upload & Interactive Selection -->
+            <section class="card editor-card">
+                <div class="card-header">
+                    <h2>1. Fayl yuklash va Suv belgisini tanlash</h2>
+                    <span id="file-info-badge" class="badge-info" style="display: none;"></span>
+                </div>
+
+                <!-- Dropzone Area -->
+                <div id="dropzone" class="dropzone">
+                    <input type="file" id="file-input" accept="image/*,video/*,.mpg,.mpeg,.ts,.mkv,.avi,.mov" hidden>
+                    <div class="dropzone-content">
+                        <div class="upload-icon-circle">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                        </div>
+                        <h3>Faylni shu yerga sudrab tashlang</h3>
+                        <p>yoki kompyuterdan tanlash uchun bosing</p>
+                        <div class="supported-formats">
+                            <span>PNG</span><span>JPG</span><span>WEBP</span><span>MP4</span><span>AVI</span><span>MOV</span><span>MKV</span><span>MPG</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Canvas Editor (Shown after upload) -->
+                <div id="canvas-container" class="canvas-wrapper" style="display: none;">
+                    <div class="canvas-toolbar">
+                        <span class="toolbar-hint">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                            Sichqoncha bilan tozalanishi kerak bo'lgan sohani to'rtburchak qilib chizing
+                        </span>
+                        <div class="toolbar-actions">
+                            <button type="button" id="btn-reset-roi" class="btn-subtle" onclick="resetROI()">
+                                ↺ Belgini tozalash
+                            </button>
+                            <button type="button" id="btn-change-file" class="btn-subtle" onclick="resetAll()">
+                                ⇄ Yangi fayl
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="canvas-viewport" id="canvas-viewport">
+                        <canvas id="interactive-canvas"></canvas>
+                    </div>
+
+                    <div class="roi-status-bar">
+                        <div id="roi-coords-display">Tanlangan soha: <span class="highlight">Butun kadr</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Side: Controls & Processing Settings -->
+            <section class="card controls-card">
+                <div class="card-header">
+                    <h2>2. Sozlamalar va Tozalash</h2>
+                </div>
+
+                <form id="clean-form" onsubmit="handleStartClean(event)">
+                    <!-- Preset Selection -->
+                    <div class="form-group">
+                        <label class="form-label">Tezkor Joylashuv (Preset):</label>
+                        <div class="preset-grid">
+                            <button type="button" class="btn-preset active" data-preset="bottom_right" onclick="applyPreset('bottom_right')">
+                                ↘ Pastki o'ng (TikTok/Logo)
+                            </button>
+                            <button type="button" class="btn-preset" data-preset="top_right" onclick="applyPreset('top_right')">
+                                ↗ Yuqori o'ng (TV Logolar)
+                            </button>
+                            <button type="button" class="btn-preset" data-preset="bottom_left" onclick="applyPreset('bottom_left')">
+                                ↙ Pastki chap
+                            </button>
+                            <button type="button" class="btn-preset" data-preset="top_left" onclick="applyPreset('top_left')">
+                                ↖ Yuqori chap
+                            </button>
+                            <button type="button" class="btn-preset full-span" data-preset="bottom_subtitles" onclick="applyPreset('bottom_subtitles')">
+                                ▰ Pastki Subtitr qatori
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Cleaning Mode -->
+                    <div class="form-group">
+                        <label class="form-label" for="clean-mode">Tozalash rejimi:</label>
+                        <select id="clean-mode" class="form-select" onchange="updateModeUI()">
+                            <option value="roi_box">Tanlangan sohani to'liq tozalash (Box Inpaint — Eng toza va tezkor)</option>
+                            <option value="roi_auto">Soha ichidagi matn/belgilarni aniqlab tozalash (Auto-detect in Box)</option>
+                            <option value="full_auto">Butun kadr bo'ylab avtomatik matn qidirish (Full Auto)</option>
+                        </select>
+                        <p class="form-hint">Logolar va watermarklar uchun "Box Inpaint" eng silliq va tabiiy natija beradi.</p>
+                    </div>
+
+                    <!-- Advanced Settings Toggle -->
+                    <details class="advanced-settings">
+                        <summary>Kengaytirilgan sozlamalar (Algoritm, Radius, Silliqlash)</summary>
+                        <div class="advanced-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="inpaint-method">Inpainting algoritmi:</label>
+                                <select id="inpaint-method" class="form-select">
+                                    <option value="telea" selected>Telea (Fast Marching — Tezkor)</option>
+                                    <option value="ns">Navier-Stokes (Suyuqlik dinamikasi — Silliq)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="inpaint-radius">Radius (Piksel atrofi): <span id="val-radius">3</span></label>
+                                <input type="range" id="inpaint-radius" min="1" max="15" value="3" class="form-range" oninput="document.getElementById('val-radius').innerText = this.value">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="dilate-iterations">Qirralarni kengaytirish (Dilation): <span id="val-dilate">2</span></label>
+                                <input type="range" id="dilate-iterations" min="0" max="6" value="2" class="form-range" oninput="document.getElementById('val-dilate').innerText = this.value">
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Start Button -->
+                    <button type="submit" id="btn-submit" class="btn-primary" disabled>
+                        <span class="btn-icon">✨</span>
+                        <span>Tozalashni boshlash</span>
+                    </button>
+                </form>
+
+                <!-- Processing Progress Panel -->
+                <div id="progress-panel" class="progress-card" style="display: none;">
+                    <div class="progress-header">
+                        <div class="spinner"></div>
+                        <span id="progress-title" class="progress-title">Qayta ishlanmoqda...</span>
+                        <span id="progress-percent" class="progress-percent">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+                    <div id="progress-details" class="progress-details">Jarayon tayyorlanmoqda...</div>
+                </div>
+
+                <!-- Result Card -->
+                <div id="result-panel" class="result-card" style="display: none;">
+                    <div class="result-badge">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>Muvaffaqiyatli tozalandi!</span>
+                    </div>
+
+                    <div id="result-media-container" class="result-media">
+                        <!-- Video or Image injected here -->
+                    </div>
+
+                    <div class="result-actions">
+                        <a id="btn-download" href="#" class="btn-success" download>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            <span>Tozalangan faylni yuklab olish</span>
+                        </a>
+                        <button type="button" class="btn-secondary" onclick="resetAll()">
+                            Boshqa fayl tozalash
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>MediaCleaner • Python, OpenCV & FastAPI asosida qurilgan yengil media tozalovchi</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

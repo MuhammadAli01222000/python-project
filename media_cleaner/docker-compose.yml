@@ -1,0 +1,12 @@
+services:
+  media_cleaner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: media_cleaner_app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/media_cleaner/uploads
+      - ./outputs:/app/media_cleaner/outputs
+    restart: unless-stopped
